@@ -1,0 +1,24 @@
+{
+  "name": "space-invaders",
+  "version": "1.0.0",
+  "description": "Space Invaders in WebGL",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hbridge/SpaceInvaders.git"
+  },
+  "keywords": [
+    "games",
+    "arcade",
+    "WebGL"
+  ],
+  "author": "Henry Bridge <hbridge@oldfashionedsw.com> (https://www.oldfashionedsw.com/)",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/hbridge/SpaceInvaders/issues"
+  },
+  "homepage": "https://github.com/hbridge/SpaceInvaders#readme"
+}
