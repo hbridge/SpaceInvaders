@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/hbridge/SpaceInvaders/issues"
   },
-  "homepage": "https://github.com/hbridge/SpaceInvaders#readme"
+  "homepage": "https://github.com/hbridge/SpaceInvaders#readme",
+  "dependencies": {
+    "node-static": "^0.7.11"
+  }
 }
