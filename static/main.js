@@ -1,29 +1,42 @@
 "use strict"
 
-const ENEMY_COLS = 11;
-const ENEMY_ROWS = 5;
-const FREE_COLS = 11;
-const ENEMY_WIDTH = 4;
+// enemy count / parameters
+const ENEMY_COLS = 11;  // number of columns of invaders
+const ENEMY_ROWS = 5;   // number of rows of invaders
+const FREE_COLS = 11;   // number of columns of free space for the invaders to move in
+
+// all dimensions specified in columns/rows
+const ENEMY_WIDTH = 4;  
 const ENEMY_HEIGHT = ENEMY_WIDTH;
-const ENEMY_SPACING = ENEMY_WIDTH;
-const VERTICAL_SPACE_FACTOR = 2;
+const ENEMY_VERTICAL_SPACING = ENEMY_HEIGHT; 
+const ENEMY_HORIZONTAL_SPACING = ENEMY_WIDTH;
 const PLAYER_HEIGHT = 2;
 const PLAYER_WIDTH = 6;
-const PLAYER_SENTINEL = "A";
 
-const NUM_COLS = (ENEMY_COLS * (ENEMY_WIDTH + ENEMY_SPACING)) + FREE_COLS;
+// total number of columns on the board, useful for calculating cell size in pixels
+// we don't calculate the number of rows, just stick the player at the bottom of the screen
+const NUM_COLS = (ENEMY_COLS * (ENEMY_WIDTH + ENEMY_HORIZONTAL_SPACING)) + FREE_COLS;
 
-const PLAYER_MOVE_DX = 10;
+const PLAYER_MOVE_DX = 10; // how much to move the player each key event
 
+/* Rendering Globals */ 
 let Canvas = undefined;
 let Context = undefined;
+let LastRender = undefined; // used to calculate time passed between updates
+let ShowBoundingBoxes = false; // draws bounding boxes for game objects
 let CellSize = 0;
 
-let AlienImg = undefined;
+/* Game assets */
+let AlienImg = undefined; 
 let PlayerImg = undefined;
 
-let ShowBoundingBoxes = false;
+/* Game Logic Globals */
+let Enemies = [];
+let DirectionMultiplier = 1; // 1 is right, -1 is left
+let Player = undefined;
+let Paused = false;
 
+/* Geometry utility classes */
 class Point {
     x;
     y;
@@ -58,6 +71,11 @@ class Bounds {
             );
     }
 }
+
+/* class GameObject 
+Generic class for an object in the game that supports geometric helpers and knows
+how to render itself in the canvas.
+*/
 
 class GameObject {
     bounds;
@@ -126,32 +144,10 @@ class PlayerShip extends GameObject {
             this.bounds.width, this.bounds.height);
     }
 }
-
-function handleKeypress(event) {
-    var name = event.key;
-    //var code = event.code;
-    //console.log(`Key pressed ${name} \r\n Key code value: ${code}`);
-    switch (name) {
-        case "ArrowRight":
-            Player.move(PLAYER_MOVE_DX, 0);
-            break;
-        case "ArrowLeft":
-            Player.move(-1 * PLAYER_MOVE_DX, 0);
-            break;
-        case "p":
-            setPaused(!Paused);
-            break;
-        default:
-            console.log("Other keypress: " + name);
-            break;
-    }
-}
-
-
-let Enemies = [];
-let Player = undefined;
-let Paused = false;
-
+/*
+funciton init()
+Sets up the rendering context and game board
+*/
 function init() {
     Canvas = document.getElementById("canvas");
     Context = Canvas.getContext("2d");
@@ -166,8 +162,8 @@ function init() {
         let row = [];    
             for (let j = 0; j < ENEMY_COLS; j++) {
                 row.push(new Alien(new Point(
-                    j * (ENEMY_WIDTH + ENEMY_SPACING) * CellSize,
-                    i * (ENEMY_HEIGHT + ENEMY_SPACING) * CellSize
+                    j * (ENEMY_WIDTH + ENEMY_HORIZONTAL_SPACING) * CellSize,
+                    i * (ENEMY_HEIGHT + ENEMY_VERTICAL_SPACING) * CellSize
                     )));
             }
     
@@ -177,7 +173,10 @@ function init() {
     Player = new PlayerShip(new Point(0, Canvas.height - (PLAYER_HEIGHT * CellSize)));
 }
 
-let DirectionMultiplier = 1; // 1 is right, -1 is left
+/*
+funciton update(dt)
+Takes the amount of time time that's passed since last render and updates the game state accordingly
+*/
 function update(dt) {
     let dx = dt/100 * CellSize * DirectionMultiplier;
     let dy = 0;
@@ -213,15 +212,14 @@ function render() {
     Player.render();
 }
 
-let lastRender = undefined;
 function renderLoop(timestamp) {
-    if (lastRender == undefined) lastRender = timestamp;
-    var progress = timestamp - lastRender;
+    if (LastRender == undefined) LastRender = timestamp;
+    var dt = timestamp - LastRender;
   
     if (!Paused) {
-        update(progress)
+        update(dt)
         render();
-        lastRender = timestamp;
+        LastRender = timestamp;
         window.requestAnimationFrame(renderLoop)
     }
   }
@@ -229,9 +227,27 @@ function renderLoop(timestamp) {
 function setPaused(paused) {
     Paused = paused;
     if (!paused) {
-        // we have to clear lastRender so the animation doesn't jump when rendering resumes
-        lastRender = undefined; 
+        // we have to clear LastRender so the animation doesn't jump when rendering resumes
+        LastRender = undefined; 
         window.requestAnimationFrame(renderLoop);
+    }
+}
+
+function handleKeypress(event) {
+    let key = event.key;
+    switch (key) {
+        case "ArrowRight":
+            Player.move(PLAYER_MOVE_DX, 0);
+            break;
+        case "ArrowLeft":
+            Player.move(-1 * PLAYER_MOVE_DX, 0);
+            break;
+        case "p":
+            setPaused(!Paused);
+            break;
+        default:
+            console.log("Other keypress: " + key);
+            break;
     }
 }
 
