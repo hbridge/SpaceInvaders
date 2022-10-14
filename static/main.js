@@ -143,6 +143,12 @@ class PlayerShip extends GameObject {
             this.bounds.location.x, this.bounds.location.y, 
             this.bounds.width, this.bounds.height);
     }
+
+    move(dx, dy) {
+        // don't let the player's ship move off the board
+        if (this.isMoveOutOfCanvas(dx, dy)) return;
+        super.move(dx, dy);
+    }
 }
 /*
 funciton init()
