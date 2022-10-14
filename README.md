@@ -1,5 +1,5 @@
 # SpaceInvaders
-WebGL Space Invaders
+HTML Canvas Space Invaders
 
 # Running
 1. Run `node index.js`
