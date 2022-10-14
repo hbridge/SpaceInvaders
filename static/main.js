@@ -12,18 +12,17 @@ const PLAYER_WIDTH = 6;
 const PLAYER_SENTINEL = "A";
 
 const NUM_COLS = (ENEMY_COLS * (ENEMY_WIDTH + ENEMY_SPACING)) + FREE_COLS;
-const NUM_ROWS = (ENEMY_ROWS * (ENEMY_HEIGHT + ENEMY_SPACING)) * VERTICAL_SPACE_FACTOR;
 
 const PLAYER_MOVE_DX = 10;
 
 let Canvas = undefined;
 let Context = undefined;
-let CanvasWidth = 0;
-let CanvasHeight = 0;
 let CellSize = 0;
 
 let AlienImg = undefined;
 let PlayerImg = undefined;
+
+let ShowBoundingBoxes = false;
 
 class Point {
     x;
@@ -44,6 +43,19 @@ class Bounds {
         this.location = location;
         this.width = width;
         this.height = height;
+    }
+
+    intersects(other) {
+        return (
+            // left edge of this left of other right edge
+            this.location.x <= other.location.x + other.width
+            // right edge of this to the right of other left edge
+            && this.location.x + this.width >= other.location.x
+            // top of this is above the other bottom edge
+            && this.location.y <= other.location.y + other.height
+            // bottom edge of this is below other top edge
+            && this.location.y + this.height >= other.location.y
+            );
     }
 }
 
@@ -68,6 +80,15 @@ class GameObject {
 
         return true;
     }
+
+    render() {
+        if (ShowBoundingBoxes) {
+            Context.beginPath();
+            Context.rect(this.bounds.location.x, this.bounds.location.y, this.bounds.width, this.bounds.height);
+            Context.strokeStyle = "#FF0000";
+            Context.stroke();
+        }
+    }
 }
 
 class Alien extends GameObject {
@@ -80,6 +101,7 @@ class Alien extends GameObject {
     }
 
     render() {
+        super.render();
         Context.drawImage(AlienImg, 
             this.bounds.location.x, this.bounds.location.y, 
             Math.floor(CellSize * ENEMY_WIDTH), Math.floor(CellSize * ENEMY_HEIGHT));
@@ -87,6 +109,8 @@ class Alien extends GameObject {
 }
 
 class PlayerShip extends GameObject {
+    lives = 1;
+
     constructor(startLocation) {
         super(new Bounds(
             startLocation,
@@ -96,6 +120,7 @@ class PlayerShip extends GameObject {
     }
 
     render() {
+        super.render();
         Context.drawImage(PlayerImg, 
             this.bounds.location.x, this.bounds.location.y, 
             this.bounds.width, this.bounds.height);
@@ -113,7 +138,11 @@ function handleKeypress(event) {
         case "ArrowLeft":
             Player.move(-1 * PLAYER_MOVE_DX, 0);
             break;
+        case "p":
+            setPaused(!Paused);
+            break;
         default:
+            console.log("Other keypress: " + name);
             break;
     }
 }
@@ -121,13 +150,12 @@ function handleKeypress(event) {
 
 let Enemies = [];
 let Player = undefined;
+let Paused = false;
 
 function init() {
     Canvas = document.getElementById("canvas");
     Context = Canvas.getContext("2d");
-    CanvasWidth = Canvas.width;
-    CanvasHeight = Canvas.height;
-    CellSize = CanvasWidth / NUM_COLS;
+    CellSize = Canvas.width / NUM_COLS;
     AlienImg = document.getElementById("alien");
     PlayerImg = document.getElementById("player");
 
@@ -165,9 +193,14 @@ function update(dt) {
 
     for (let row of Enemies) {
         for (let enemy of row) {
-            if (enemy.move(dx, dy));
+            (enemy.move(dx, dy));
+            if (enemy.bounds.intersects(Player.bounds)) {
+                Player.lives -= 1;
+                console.log("Enemy hit player, new lives %d", Player.lives);
+                setPaused(true);
+            }
         }
-    }
+    } 
 }
 
 function render() {
@@ -180,16 +213,27 @@ function render() {
     Player.render();
 }
 
-let lastRender = 0;
+let lastRender = undefined;
 function renderLoop(timestamp) {
-    var progress = timestamp - lastRender
+    if (lastRender == undefined) lastRender = timestamp;
+    var progress = timestamp - lastRender;
   
-    update(progress)
-    render();
-  
-    lastRender = timestamp
-    window.requestAnimationFrame(renderLoop)
+    if (!Paused) {
+        update(progress)
+        render();
+        lastRender = timestamp;
+        window.requestAnimationFrame(renderLoop)
+    }
   }
+
+function setPaused(paused) {
+    Paused = paused;
+    if (!paused) {
+        // we have to clear lastRender so the animation doesn't jump when rendering resumes
+        lastRender = undefined; 
+        window.requestAnimationFrame(renderLoop);
+    }
+}
 
 function main() {
     console.log('Main called');
