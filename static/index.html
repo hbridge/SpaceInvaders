@@ -8,8 +8,18 @@
     <body style="font-family: futura, sans-serif; padding:48px;">
         <img src="img/alien.png" id="alien" style="display:none;"/>
         <img src="img/player.png" id="player" style="display:none;"/>
-        <h1>Space Invaders</h1>
-        <canvas id="canvas" width="1024" height="768" style="border: 1px solid; background-color: black;"></canvas>  
+        <img src="img/bullet.png" id="bullet" style="display:none;"/>
+        <div style="display:block; width: 1024px; position: relative;">
+            <div>
+                <h1 style="float: left;">Space Invaders</h1>
+                <h1 style="float: right;">Score: <span id="score">0</span></h1>
+            </div>
+            <canvas id="canvas" width="1024" height="768" style="border: 1px solid; background-color: black;"></canvas>  
+            <div style="position: absolute; top: 50%; width:100%; text-align: center;">
+                <h1 id="winText" style="color: red; display: none;">You win!</h1>
+            </div>
+            
+        </div>
     </body>
     <script>window.onload = main;</script>
     

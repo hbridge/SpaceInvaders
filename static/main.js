@@ -12,6 +12,10 @@ const ENEMY_VERTICAL_SPACING = ENEMY_HEIGHT;
 const ENEMY_HORIZONTAL_SPACING = ENEMY_WIDTH;
 const PLAYER_HEIGHT = 2;
 const PLAYER_WIDTH = 6;
+const BULLET_WIDTH = 1;
+const BULLET_HEIGHT = 1;
+const BULLET_DY = -10;
+const ENEMY_SCORE_VALUE = 5;
 
 // total number of columns on the board, useful for calculating cell size in pixels
 // we don't calculate the number of rows, just stick the player at the bottom of the screen
@@ -29,12 +33,15 @@ let CellSize = 0;
 /* Game assets */
 let AlienImg = undefined; 
 let PlayerImg = undefined;
+let BulletImg = undefined;
 
 /* Game Logic Globals */
 let Enemies = [];
 let DirectionMultiplier = 1; // 1 is right, -1 is left
 let Player = undefined;
 let Paused = false;
+let Bullets = undefined;
+let Score = undefined;
 
 /* Geometry utility classes */
 class Point {
@@ -58,6 +65,7 @@ class Bounds {
         this.height = height;
     }
 
+    // returns true if this bounds intersects another bound
     intersects(other) {
         return (
             // left edge of this left of other right edge
@@ -69,6 +77,10 @@ class Bounds {
             // bottom edge of this is below other top edge
             && this.location.y + this.height >= other.location.y
             );
+    }
+
+    horizontalMidpoint() {
+        return this.location.x + (this.width / 2);
     }
 }
 
@@ -150,6 +162,24 @@ class PlayerShip extends GameObject {
         super.move(dx, dy);
     }
 }
+
+class Bullet extends GameObject {
+    constructor(startLocation){
+        super(new Bounds(
+            startLocation, 
+            BULLET_WIDTH * CellSize, 
+            BULLET_HEIGHT * CellSize
+            ));
+    }
+
+    render() {
+        super.render();
+        Context.drawImage(BulletImg, 
+            this.bounds.location.x, this.bounds.location.y, 
+            this.bounds.width, this.bounds.height);
+    }
+}
+
 /*
 funciton init()
 Sets up the rendering context and game board
@@ -160,6 +190,7 @@ function init() {
     CellSize = Canvas.width / NUM_COLS;
     AlienImg = document.getElementById("alien");
     PlayerImg = document.getElementById("player");
+    BulletImg = document.getElementById("bullet");
 
     document.addEventListener('keydown', handleKeypress, false);
 
@@ -177,6 +208,8 @@ function init() {
     }    
 
     Player = new PlayerShip(new Point(0, Canvas.height - (PLAYER_HEIGHT * CellSize)));
+    Bullets = [];
+    Score = 0;
 }
 
 /*
@@ -187,15 +220,23 @@ function update(dt) {
     let dx = dt/100 * CellSize * DirectionMultiplier;
     let dy = 0;
 
-    let firstRow = Enemies[0];
-    let enemyToBoundsCheck = DirectionMultiplier == 1 ? firstRow[firstRow.length - 1] : firstRow[0];
-    if (enemyToBoundsCheck.isMoveOutOfCanvas(dx, 0)) {
-        // if the enemy move would put it out of the canvas, change directions
-        // and bump a row down
-        DirectionMultiplier *= -1;
-        dy = CellSize; // 
+    // check to see if the player won
+    if (Enemies.length == 0) {
+        win();
     }
 
+    // change enemy direction if enemies are about to go off screen
+    for (let row of Enemies) {
+        let enemyToBoundsCheck = DirectionMultiplier == 1 ? row[row.length - 1] : row[0];
+        if (enemyToBoundsCheck.isMoveOutOfCanvas(dx, 0)) {
+            // if the enemy move would put it out of the canvas, change directions
+            // and bump a row down
+            DirectionMultiplier *= -1;
+            dy = CellSize; // 
+        }
+    }
+
+    // move enemies and check to see if any enemies hit the player
     for (let row of Enemies) {
         for (let enemy of row) {
             (enemy.move(dx, dy));
@@ -206,6 +247,45 @@ function update(dt) {
             }
         }
     } 
+
+    // check for bullets leaving the board and colliding with enemies
+    let bulletsToRemove = [];
+    let enemiesToRemove = [];
+    for (let bullet of Bullets) {
+        if (bullet.isMoveOutOfCanvas(0, BULLET_DY)) {
+            bulletsToRemove.push(bullet);
+            console.log("bullet OOB");
+        } else {
+            bullet.move(0, BULLET_DY);
+            for (let row of Enemies) {
+                for (let enemy of row) {
+                    if (bullet.bounds.intersects(enemy.bounds)) {
+                        console.log("hit!");
+                        bulletsToRemove.push(bullet);
+                        enemiesToRemove.push(enemy);
+                    }
+                }
+            }
+        }
+    }
+
+    // remove the bullets and enemies from the board
+    Bullets = Bullets.filter(bullet => {
+        return bulletsToRemove.find(obj => obj == bullet) == undefined;
+    });
+
+    for (let i = 0; i < Enemies.length; i++) {
+        // can't use iterator since we're assigning
+        Enemies[i] = Enemies[i].filter(enemy => {
+            return enemiesToRemove.find(obj => obj == enemy) == undefined;
+        });
+    }
+
+    //remove any empty rows
+    Enemies = Enemies.filter(row => row.length > 0);
+
+    // update the player's score for any enemies removed
+    Score += enemiesToRemove.length * ENEMY_SCORE_VALUE;
 }
 
 function render() {
@@ -216,6 +296,12 @@ function render() {
         }
     }
     Player.render();
+
+    for (let bullet of Bullets) {
+        bullet.render();
+    }
+
+    document.getElementById("score").innerHTML = Score;
 }
 
 function renderLoop(timestamp) {
@@ -239,6 +325,20 @@ function setPaused(paused) {
     }
 }
 
+function win() {
+    setPaused(true);
+    document.getElementById("winText").style.display = "block";
+}
+
+function shootBullet() {
+    if (Paused) return;
+    let location = new Point(
+        Player.bounds.horizontalMidpoint() - (BULLET_WIDTH * CellSize)/2,
+        Player.bounds.location.y
+    );
+    Bullets.push(new Bullet(location));
+}
+
 function handleKeypress(event) {
     let key = event.key;
     switch (key) {
@@ -250,6 +350,9 @@ function handleKeypress(event) {
             break;
         case "p":
             setPaused(!Paused);
+            break;
+        case " ":
+            shootBullet();
             break;
         default:
             console.log("Other keypress: " + key);
